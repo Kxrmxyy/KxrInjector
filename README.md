@@ -20,7 +20,7 @@
    gcc Source.c -o kxrInjector.exe
 4. **Run**: Run the file using your Process ID and Shellcode file.
    ```bash
-   kxrInjector.exe [Target_Process_ID] [Path_to_Shellcode_File]
+   kxrInjector.exe [Target_Process_ID]
 
 ## Notes
 1. **Reversing**: Feel free to reverse this in Ghidra or IDA. If it makes you feel safer or better about this script.
