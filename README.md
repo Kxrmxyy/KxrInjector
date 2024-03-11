@@ -15,7 +15,7 @@
    
    ![image](https://github.com/Kxrmxyy/mxllyapi/assets/137090888/dfe94ed7-7bdb-48fe-9850-8ec903d33b1f)
    ![image](https://github.com/Kxrmxyy/mxllyapi/assets/137090888/bb21919e-7225-489a-96b7-d747af11e9f6)
-3. **Compile**: Compile Source.c or skip this step and go straight to 3.
+3. **Compile**: Compile Source.c or go to step 3. If you do skip this it will only be a calc.exe payload.
    ```bash
    gcc Source.c -o kxrInjector.exe
 4. **Run**: Run the file using your Process ID and Shellcode file.
